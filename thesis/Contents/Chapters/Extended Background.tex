@@ -1,0 +1,113 @@
+\chapter{Extended Background}
+
+\section{How the Signal Protocol stack achieves post-quantum security}
+
+\subsection{PQXDH}
+
+PQXDH is designed to establish an initial shared secret between two clients. It functions as a session-bootstrap mechanism, allowing the communicating parties to derive an initial shared secret that can later be used to initialize subsequent ratcheting protocols [18]. This shared secret is then processed through a key derivation function (KDF) to derive the key material needed by later protocols such as SPQR and the Double Ratchet [19]. PQXDH is an update to the classical X3DH protocol in Signal’s post-quantum design \cite{ref16}. 
+
+\subsection{Double Ratchet}
+
+\subsubsection{Symmetric key ratchet}
+
+The symmetric key ratchet is used in both Double Ratchet and Triple Ratchet.
+It consists of a Key Derivation Function (KDF) that takes in a value and a key and produces some output that is indistinguishable from randomness provided the key is not known.
+The KDF is applied twice with two different values, to produce an output and a new KDF-key.
+The new KDF-key can then be used with the KDF to produce more outputs.
+By setting the value provided to the KDF to be constant, we can use this KDF-chain to generate an unlimited number of outputs, all stemming from one root-key.
+These outputs can then be used as keys to encrypt messages.
+In the implementation, the KDF is a HMAC (Hash-based Message Authentication Code) using SHA-256. \cite{ref19}
+
+ 
+
+\subsubsection{Diffie-Hellman ratchet}
+
+A DH-ratchet is meant to coordinate encryption between two parties.
+The sender generates a DH key pair, the sender sends the public key to the receiver.
+When the receiver receives the public key, a DH-ratchet step is performed.
+A DH-ratchet step consists of generating a new DH key pair and applying DH on the receiver's new private key and the obtained public key, to generate a shared secret.
+The receiver then replies with their new public key, letting the sender obtain the same shared secret.
+The sender can now perform a DH-ratchet step using the received public key and a new public key pair, resulting in a sort of “ping-pong” effect.
+For each key sent back and forth, new key pairs are also generated. By using the symmetric key ratchet, one shared DH-output can be used to encrypt a series of messages. \cite{ref19} 
+
+ 
+
+\subsubsection{Example of two-way communication using the DH ratchet and symmetric key ratchet, i.e. a Double Ratchet, sending and receiving messages}
+
+Alice and Bob share their initial public keys and use the PQXDH protocol to obtain a shared secret (RK1).
+Alice also obtains Bobs initial public key used for DH ratchets (PKB1).
+Alice then performs one step of the DH ratchet by generating a new key pair (PKA1, SKA1) and using (PKB1, SKA1) to obtain a DH output D1.
+The DH keys used in this step are Elliptic Curve Curve25519; the DH function is X25519.
+D1 is used as the input to a KDF with the key RK1 to obtain RK2 and the initial chain key CK1.
+CK1 is used in a symmetric key ratchet to obtain a new chain key CK2 and an encryption key K1.
+Alice uses K1 with AES-GCM to encrypt her first message M1, obtaining ciphertext C1.
+(PKA1, C1) is sent to Bob and he uses (PKA1, SKB1) to obtain D1, using the same process to obtain RK2, CK2 and K1, and decrypts C1 into M1.
+To encrypt a second message Alice performs another symmetric key ratchet step using CK2, obtaining CK3 and K2.
+Since Bob also has CK2 he can perform the same ratcheting step to further decrypt her messages.
+Alice still sends PKA1 to Bob, so Bob knows that a new ratcheting step has not yet been performed.
+If Bob wants to encrypt a message to send to Alice, he generates a new public/private key pair and constructs a sending chain using Alice’s most recent public key and RK2 as the KDF root key.
+Since Alice now has received a new public key from Bob, she will create a new sending chain with a new key pair when she sends her next message. 
+
+\subsection{Sparse Post Quantum Ratchet}
+
+ 
+\subsubsection{SCKA Protocol}
+
+
+The Sparse Post Quantum Ratchet relies on the Sparse Continuous Key Agreement (SCKA) protocol.
+The SCKA protocol provides an interface which allows the implementation to how often keys are exchanged \cite{ref19}.
+In SCKA, each key is tied to an “epoch” which is a strictly ordered number that uniquely identifies a key \cite{ref17}.
+SCKA defines two functions, Send and Receive. Send takes in some state and outputs a message, an epoch and a key as well as updating the state.
+This epoch represents the latest key known to the other party after receiving the message.
+The key output may be null. Receive takes in the state and a message, and outputs the epoch given by send, a key or null, as well as updating the state \cite{ref19}.
+The utility of SCKA is that by passing the message between users, the users can agree on an epoch.
+Since the epoch is an identifier for a key known by both users, this allows them to agree on the key without necessarily sending the key.
+This can be used to spread key exchanges over time, rather than producing new keys with each message \cite{ref19}. 
+
+\subsubsection{Incremental Key Encapsulation Mechanism}
+
+Key encapsulation mechanism is a cryptographic protocol analogous to the Diffie-Hellman key exchange.
+The main difference being that the shared secret is generated and cannot be freely picked by the sender.
+Some KEMs based on the "Learning with Errors" assumption introduce noise into the key exchange, which is solved by sending a second “reconciliation message” ($ct_2$) allowing the recipient to obtain an exact shared secret [17].
+The incremental KEM allows $ct_1$ and $ct_2$ to be produced by separate functions, the incremental KEM consists of four functions: 
+
+\begin{align*}
+\text{KeyGen}(randomness) \rightarrow (dk, ek_{header}, ek_{vector}) \\
+\text{Encaps1}(ek\_header, randomness) \rightarrow (encaps\_secret, ct_1, shared\_secret) \\ 
+\text{Encaps2}(encaps\_secret, ek_{header}, ek_{vector}) \rightarrow ct2 \\
+\text{Decaps}(dk, ct_1, ct_2) \rightarrow shared\_secret
+\end{align*}\cite{ref17}
+
+In terms of a Diffie-Hellman key exchange, $dk$ can be viewed as the private key, and $(ek_{header}, ek_{vector})$ can be viewed as the public key. The Diffie-Hellman message sent to perform a key exchange can be seen as analogous to $(ct_1, ct_2)$.
+
+ML-KEM is an incremental KEM used in SPQR to implement the ML-KEM Braid protocol. ML-KEM Braid is a protocol which uses the incremental nature of ML-KEM to parallelize parts of the key exchange, utilizing Reed-Solomon error correction to ensure reliability and secrecy \cite{ref17} \cite{ref24}.  
+
+\subsubsection{SCKA using ML-KEM Braid Protocol}
+
+In the SPQR library used in Signal, the ML-KEM Braid protocol is used to implement SCKA [24]. ML-KEM Braid relies on an incremental KEM, which allows it to compute and send $ct1$ after receiving just a header. After this, $ct_1$ and $ek_{vector}$ can be sent in parallel. This saves bandwidth due to $ct_1$ and $ek_{vector}$ being the largest components of the ciphertext and encapsulation key in the KEM used by the protocol \cite{ref17}. Messages are sent in error-corrected chunks using Solomon-Reed erasure codes \cite{ref24}. A message split into smaller chunks can be sent as a stream of chunks over time, instead of as a single atomic message \cite{ref17}. This gives users a trade-off between the speed and bandwidth, and assures that the protocol functions in adversarial environments where packets may be dropped. Since key exchanges now may take an inordinate amount of time, there needs to be a system that allows messages to be sent and encrypted while a key exchange is taking place. This is solved by integrating ML-KEM Braid with the SCKA protocol, which tracks the latest key that both parties have knowledge of.
+
+\subsubsection{Sparse Post Quantum Ratchet}
+
+The Sparse Post Quantum Ratchet (SPQR) is an analogue of the conventional Double Ratchet but adapted to use SCKA. To send messages, SCKASend is used. If SCKASend produces a non-null key, the key is used to create a new root-key and sending chain. Else the key matching the epoch given by SCKASend is retrieved, and the senders message is encrypted using that keys sending chain. The message given by SCKASend is used as a header. To decrypt messages, the header of the incoming message is used as the “message” parameter in SCKAReceive. Similarly to sending, either the output key will be used to generate a new receiving chain, or the epoch will point to an existing receiving chain. \cite{ref19}
+
+\subsection{Triple Ratchet}
+
+Triple Ratchet is a combination of Double Ratchet and SQPR. In the Triple Ratchet protocol, the Double Ratchet and SQPR protocols are ran in parallel. Whenever a key is needed, a hybrid key is generated by retrieving keys from both protocols and passing them into a KDF. This achieves hybrid security; an attacker would need a key from each protocol to retrieve the hybrid key and would therefore need to break both protocols \cite{ref20}.  
+
+\section{Research Gap}
+
+\subsection{Previous Evaluations and Comparisons}
+
+While the cryptographic protocol verifier ProVerif has been used to analyse the security of both SPQR \cite{ref19} and the Double Ratchet \cite{ref26}, there appears to be less research on the performance implications of combining SPQR with the Double Ratchet in implementation. This is likely related to the fact that the integration of SPQR into the Signal protocol stack is relatively recent at the time of writing. It can be expected that adding more code for security should lead to slower execution. Then, the question is how large this trade-off may be. 
+
+\subsection{Comparison of Protocols}
+
+It is difficult to compare two-party secure messaging protocols, and there exists no perfect protocol \cite{ref09}. The reason for this is that there are trade-offs that need to be made. More robust security measures may result in a larger message overhead, which affects bandwidth usage \cite{ref09}, a central concern. Another aspect is the communication pattern \cite{ref09} in which two parties communicate, which relates to the asynchronous or synchronous settings described earlier. 
+
+The communication pattern between the parties, including whether they are simultaneously online, whether messages are exchanged in a ping-pong fashion, or whether one party sends many messages before the other replies affects both the efficiency of ratcheting and the trade-offs involved in protocol design \cite{ref20}. Consequently, the expected communication pattern of an application may influence which secure messaging protocol, or protocol configuration, is most appropriate. 
+
+Although Signal combines the sparse post-quantum ratchet with the Double Ratchet in the Triple Ratchet design, the two mechanisms contribute different computational and communication costs. The composition makes it harder to attribute total overhead to one mechanism. At the same time, the Signal protocol stack being open-source can be implemented by other organizations to better fit expected communication patterns for their use case. Thus the target group that may be interested in this research include actors that deal with implementing secure messaging systems under performance constraints, not necessarily bound to just mobile messaging applications. By isolating the measurement of these artefacts, it may help these actors make better informed decisions when considering the performance of these ratcheting protocols in isolation. This thesis studies them separately from a performance perspective to understand the cost of each component and the trade-offs introduced by post-quantum protection. 
+
+ 
+
+This paper only studies the modes of communication that are implicitly present in the benchmarks themselves, for example the ping-pong bench performs a encrypt-decrypt-encrypt-decrypt pattern. 

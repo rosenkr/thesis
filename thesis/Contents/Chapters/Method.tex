@@ -1,0 +1,102 @@
+\chapter{Methodology}
+
+\section{Method Choice}
+
+\subsection{Empirical and Design Research}
+
+The study relates to empirical research in that its goal is to describe how two artefacts compare and explain why differences arise \cite{ref21}. It also relates to design research in that it studies software artefacts, although it does not attempt to develop novel ones. As in design research, the purpose is to understand the artefacts and their behaviour \cite{ref21}.
+
+\subsection{Research Strategy}
+
+The study adopts an empirical comparative evaluation with benchmarks. It has similarities with an experiment according to Johannesson and Perjons, although it does not attempt to establish a general cause-and-effect relationship \cite{ref21}. 
+
+Benchmarking has been described as central to experimental computer science, where it is used to evaluate and compare the performance of systems and ideas \cite{ref23}. In empirical software engineering, benchmarking has likewise been described as a method for comparing methods, techniques, and tools \cite{ref22}.
+
+The purpose of the comparison is to determine whether the post-quantum-integrated implementation exhibits measurable performance differences relative to the earlier implementation, and to contextualize these differences using standalone SPQR benchmarks.
+
+An alternative research strategy would have been a case study, in which the artefacts would be evaluated in a more realistic application setting, such as within a messaging client or a broader system environment, to study performance under practical usage conditions. This strategy was not chosen because the aim of the study was not to gain a rich understanding of a particular real-world instance, but rather to obtain controlled and directly comparable measurements while limiting contextual variation \cite{ref21}.
+
+This is also consistent with Hasselbring's distinction between case studies and benchmarks: case studies investigate phenomena in real-world context, whereas benchmarks rely on specified synthetic workloads to support reproducible and comparative evaluation \cite{ref22}.
+
+\subsection{Research Method}
+
+Following Johannesson and Perjons' classification of data collection methods, the primary data collection method is observation of system behaviour under controlled conditions. More specifically, the runtime behaviour of the software artefacts was observed through benchmark outputs \cite{ref21}.
+
+An alternative data collection method would have been documents as the primary source of data. This was not chosen because the study aims to compare measured performance, which required empirical observation of runtime behaviour through benchmark execution. Documents were nevertheless used as a supporting source, for example through the inspection of source code and specifications \cite{ref21}.
+
+The collected data was analysed using quantitative data analysis. Since execution time was used as the performance measure, the resulting data was numerical and expressed in units of time. This choice is justified by the research goal, which is to evaluate and compare the performance of SPQR and Double Ratchet.
+
+Prior work on software performance evaluation emphasizes that benchmark results can be sensitive to methodological choices and run-to-run variation, which motivates repeated measurements and careful aggregation of results \cite{ref23}. Although \cite{ref23} focuses on Java and discusses issues specific to managed runtimes, such as just-in-time compilation, its broader methodological point remains relevant here: benchmark results may vary across runs and may be misleading if the measurement procedure is not handled carefully. At the same time, \cite{ref23} also highlights the value of stronger statistical rigor in performance evaluation. Therefore, this study includes R² and medians as descriptive metrics in the data analysis.
+
+\subsection{Ethical Aspects}
+
+The relevant ethical aspects of this study mainly concern honesty, transparency, reproducibility, and fair comparison of artefacts. Following Johannesson and Perjons, the study acknowledges all sources used and relies on open-source implementations, which reduces risks related to plagiarism and uncredited use of others' work \cite{ref21}.
+
+Since the study does not involve human participants, issues such as informed consent and participant privacy are of limited relevance \cite{ref21}. In addition, the thesis does not develop a new artefact for deployment, so ethical issues related to design risks or the societal impact of a newly introduced system are not central here \cite{ref21}. The main ethical requirement is therefore that the benchmarking process and the reporting of results are carried out in a transparent and non-misleading way.
+
+\subsection{Current Research}
+
+Current research on ratcheting performance adopts a different methodological approach from the one used in this thesis. \cite{ref16} is primarily constructive and theoretical in nature: it proposes new artefacts, analyses their correctness and security formally, and evaluates efficiency using communication-related metrics such as ciphertext size and public-key size. In terms of Johannesson and Perjons \cite{ref21}, its research strategy more resembles a mathematical proof approach.
+
+The present thesis attempts to complement current state-of-the-art work by contributing an implementation-oriented performance perspective.
+
+\section{Method Application}
+
+\subsection{Application of Research Strategy}
+
+As the research strategy is benchmarking, the setup was designed while considering a set of criteria for writing good benchmarks \cite{ref22}.
+
+There was an attempt to address some benchmark checklist criteria in \cite{ref22}, such as selecting relevant benches, supporting reproducibility, improving usability, and reporting on an independent replication package. The selected benchmarks focus on steady-state ratcheting. This means session handshake benchmarks that are otherwise part of the benchmark suite for the ratchets are excluded. Reproducibility was supported through pinned versions, scripts, and a public repository. Usability was supported by including a Docker flow and instructions for how to run the program. Furthermore, the replication package includes a folder with example runs on two different devices, which is reported on in the results section.
+
+The SPQR benchmarks include \texttt{spqr.rs}, which measures the full SPQR path, i.e the public ratchet and symmetric ratchet. This benchmark is mostly used as supporting evidence in the comparison between the two Double Ratchet versions, since its own execution time can potentially help explain the execution time difference between the two implementations.
+
+These benchmarks were selected because they measured the ratchets of interest to the research goal, whereas other benchmark code paths test other aspects, such as session startup mechanisms.
+
+\subsection{Data Collection Method}
+
+The source code in the \texttt{libsignal} repository and the \texttt{SparsePostQuantumRatchet} repository was examined \cite{signalSPQR}. For \texttt{libsignal}, version tags \texttt{v0.73.3} and \texttt{v0.92.1} were selected \cite{signalLibsignal0733,signalLibsignal0921}.
+
+
+For \texttt{libsignal}, version tags \texttt{v0.73.3} and \texttt{v0.92.1} were selected because the first represents the version directly before \texttt{v0.74.0}, where SPQR was added into the library but with optional usage.  The latter version represents the most recent commit as of writing where SPQR was explicitly forced to be used. 
+
+The repositories were examined and it was noted that since the SPQR repository only had Rust implementations, whereas the \texttt{libsignal} repository included various languages including Rust, only Rust code paths were further examined in order to control the benchmarking environment by avoiding different language implementations.
+
+From those repositories, the following subset of benchmarks were selected for \texttt{v0.73.3} and \texttt{v0.92.1} respectively:
+
+\begin{itemize}
+    \item \texttt{session encrypt} and \texttt{encrypting on an existing chain}
+    \item \texttt{session decrypt} and \texttt{decrypting on an existing chain}
+    \item \texttt{session encrypt+decrypt 1 way} and \texttt{session encrypt+decrypt 1 way}
+    \item \texttt{session encrypt+decrypt ping pong} and \texttt{session encrypt+decrypt ping pong}
+\end{itemize}
+
+ The program clones the two upstream versions and patches in counters to send and recv functions, and \texttt{add\_epoch} which is synonymous with the completion of a PQ public ratchet step.
+
+\subsubsection{Synthetic Workload}
+
+Thoroughly describing the synthetic workload for a benchmark is in line with good practice \cite{ref22}.
+
+The benchmarks do not measure an isolated ``ratchet step'' primitive, because the libraries expose ratchet progression through normal message-processing operations. Instead, the synthetic workloads invoke encryption and decryption patterns that cause the protocol state to evolve as it would during ordinary communication.
+
+Thus, the measurements reflect the cost of ratchet progression as embedded in end-to-end send and receive operations, together with any associated protocol bookkeeping. For example, the ping-pong benchmark consists of two encryptions and two decryptions, or in other words; Alice sends a message to Bob, which Bob receives, and Bob sends a message to Alice which she receives.
+
+
+\subsection{Data Analysis Method}
+
+This paper collects quantitative data in the form of execution-time measurements by running code, and descriptions of synthetic workload composition through inspection of the benchmark source code.
+
+After data collection, the pipeline continues to parse the data of interest from the full benchmark logs, and write the output file \texttt{summary.md}.
+
+The benchmarks use the Criterion library, a framework for robust software performance measurement. For each test, 100 samples are collected over approximately 5 seconds. Criterion uses linear regression to estimate the execution time per iteration, and reports R² as a measure of how well the observed measurements fit that regression model.
+
+The findings are presented in tables to make comparisons between the ratcheting protocols easier. Performance is evaluated across two different hardware devices. 
+
+By performing repeated measurements [23], descriptions of the benchmark synthetic workloads, and varying the hardware conditions, the paper aims to provide confidence that the benchmark result is reliable.
+
+The study examines performance patterns and the compromises involved when comparing the traditional Double Ratchet with the SPQR-enhanced variant. Through a structured evaluation of both approaches in controlled settings, it sheds light on the performance impact of introducing an extra ratcheting mechanism.
+
+The result of this paper is recorded in the example folder of the repository. These are presented in the results section of this paper.
+
+\subsection{Software Tools}
+
+ GPT-5.4 was used to produce the program that runs the benchmarks and presents the results. The program contains Bash scripts that orchestrate the data collection, and Python scripts that perform the data analysis. The full implementation of this suite is publicly available in the kex-signal-ratchet-benches repository on GitHub \cite{kexSignalRatchetBenches}. The repository includes an easy-to-follow description of how to run it yourself with Docker. 

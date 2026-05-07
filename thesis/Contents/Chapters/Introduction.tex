@@ -1,0 +1,84 @@
+\chapter{Introduction}
+
+Cryptography is the practice and study of techniques for secure communication in the presence of adversarial behaviour \cite{ref01}. Modern cryptography attempts to theorize the old art of cryptography by applying information theoretic concepts \cite{ref03}. Its goal is to provide a framework for formal definitions of security to produce provably secure cryptosystems \cite{ref02}.  
+
+ 
+
+A few key information security objectives that define the modern cryptographic model are confidentiality, integrity and authentication. Confidentiality is about keeping information secret from all but those who are authorized to see it. Integrity is about ensuring information has not been altered by unauthorized or unknown means. Authentication is about corroboration of the identity of an entity. These goals are achieved by combining various cryptographic primitives into protocols whose levels of security depend on the intractability of various mathematical problems such as the factorization of integers or the discrete logarithm problem. \cite{ref04}.  
+
+ 
+
+The taxonomy of cryptographic security primitives can be divided into three main categories. These are public-key cryptography (asymmetric-key), private key cryptography (symmetric-key) settings and unkeyed primitives \cite{ref04}. In a private-key setting, the communicating parties share a private key in advance, unknown to any eavesdropper. In the public-key setting, a party who wishes to communicate securely generates a pair of keys: a public key that is widely disseminated, and a private key that it keeps secret \cite{ref02}. Unkeyed primitives include one-way functions and hash functions \cite{ref04}. The private-key setting includes message authentication codes and encryption schemes constructed from pseudorandom generators, functions and permutations \cite{ref02}. The public-key setting includes encryption schemes and digital signatures \cite{ref04}. 
+
+ 
+
+Due to advancements in quantum computing technology and quantum computer hardware in the 21st century, the security of cryptographic protocols has been put into question. For certain computational problems, quantum algorithms running on quantum computers can outperform conventional computers by a large margin. One such algorithm was presented by Grover in 1996, which reduced the time to search among unsorted data from O(n) to O(n½). The implication is that an adversary equipped with a quantum computer can run this algorithm to perform a brute-force attack in a much shorter time. In the case of the private-key setting, doubling the key size reverses the damage. In the case of unkeyed primitives such as hash functions, the output size must be increased. But the situation is not so forgiving in the public-key setting. Shor invented two quantum algorithms that turned both the discrete logarithm problem and prime factorization from exponential to polynomial-time computations \cite{ref06}. 
+
+ 
+
+Research has therefore focused on coming up with algorithms that are secure even against a quantum adversary, and this class of algorithms are called post-quantum algorithms, which can be run on a non-quantum device. A competition organised by NIST sought to expedite the production of such new algorithms, with the goal of ordinating a set of standard algorithms for future use across the cyberspace. These algorithms needed to individually be both secure and performant, while NIST aimed for the set of selected algorithms to cover the main and broad information security objectives mentioned above \cite{ref06}.
+
+ 
+
+In 2022, one of the winners was the CRYSTALS-Kyber algorithm, a fast lattice-based key encapsulation mechanism (KEM) based on the public-key setting \cite{ref06}. Incorporation of this algorithm was quickly adopted by the open-source project Signal; a widely used encrypted messaging platform. They opted to combine it with their existing elliptic-curve based cryptography for extra security, creating an augmented key agreement protocol called PQXDH \cite{ref07}. Once a communication line is configured, another algorithm called Double Ratchet is combined with Sparse Post Quantum Ratchet (SPQR), forming what Signal calls the Triple Ratchet protocol, to be used over time in a Signal session. SPQR internally uses the Braid protocol which is built using ML-KEM for continuous key agreement.  
+
+The artefacts to be evaluated and compared are the classical double-ratchet protocol and the sparse post-quantum ratchet.  These artefacts appear in the codebase for the open-source project Signal. In practice, they’re used by two parties to exchange encrypted messages when using the Signal application or other secure messaging applications. 
+
+The thesis contributes to the field of cybersecurity. In OSI terms, the study is primarily situated at the upper levels of presentation/application/session, since it concerns secure messaging protocols implemented in software \cite{ref25}. 
+
+\section{Background}
+\subsection{Modern secure messaging protocol requirements}
+Before the emergence of today’s secure messaging protocols, protected personal communication was largely associated with asynchronous email, where cryptographic mechanisms such as PGP and S/MIME were used to provide message encryption and digital signatures. As instant messaging became more common, however, new protocols emerged to address the distinct security requirements of casual conversational communication. \cite{ref10}
+
+ 
+
+Borisov, Goldberg, and Brewer argued that the security requirements of instant online messaging were not aligned with what PGP or S/MIME provided; instead, it required short-lived encryption keys and repudiability \cite{ref10}. To address these requirements, they introduced a new protocol called Off-the-Record Messaging (OTR) \cite{ref10}. The core idea behind this protocol is that, unlike a one-off email, conversational communication is long-lived, while key compromise must be treated as a realistic possibility. To maintain privacy over time, key material must therefore be continuously generated and discarded \cite{ref10}. 
+
+\subsubsection{Forward Secrecy}
+Forward secrecy (FS) means that compromise of long-term or later key material should not enable an adversary to decrypt past communications \cite{ref11}. In OTR, this is achieved through ephemeral Diffie-Hellman-based key agreement and the disposal of old key material \cite{ref14}. 
+
+However, OTR remained fundamentally a synchronous mechanism. Its initial authenticated key exchange is interactive, requiring both parties to participate live at the start of the conversation to derive the first shared secret \cite{ref10}. This made OTR well suited to live online chat, but less suitable for the increasingly asynchronous communication patterns later supported by modern messaging applications \cite{ref14}. 
+
+As messaging applications evolved, they increasingly had to support both live conversational use and more asynchronous communication patterns, making classic OTR less practical for modern deployment \cite{ref14}. Furthermore, the authors of OTR discussed recovery after compromise, but did not explicitly formulate a distinct security goal for the protection of future messages after a state compromise \cite{ref10}\cite{ref12}. This limitation became more important as some secure messaging systems were expected to function even when users were not simultaneously online. 
+
+The developers of TextSecure, the predecessor of Signal, addressed this by adapting the earlier OTR-inspired design to better suit asynchronous messaging [14]. In doing so, they refined the concept of ratcheting, in which key material is continuously updated over time to limit the impact of compromise \cite{ref14}. In early Signal terminology, the corresponding recovery intuition was referred to as “future secrecy” \cite{ref11}\cite{ref12}\cite{ref14}. The resulting OTR-derived design became known as Axolotl, and later as the Double Ratchet \cite{ref12}. 
+
+\subsubsection{Post-compromise security}
+Post-compromise security (PCS) means that compromise of a party’s current state should not permanently expose all future communication; instead, security should be recoverable once the protocol incorporates fresh secret input unknown to the adversary \cite{ref12}. In modern secure messaging, ratcheting is used to provide both forward secrecy and post-compromise security, and the Double Ratchet achieves these guarantees in the classical, non-post-quantum setting \cite{ref16}. 
+
+\subsection{Quantum threat model and the need for post-quantum ratcheting}
+A quantum attacker equipped with Shor’s algorithm can break classical public-key primitives such as elliptic-curve Diffie-Hellman-based cryptography \cite{ref16}. This has direct consequences for secure messaging protocols that rely on these assumptions, including ratcheting mechanisms built on Diffie-Hellman such as the Double Ratchet \cite{ref16}. Classical ratcheting alone is therefore not sufficient in a post-quantum threat model. To address this, post-quantum secure messaging requires alternative cryptographic building blocks based on hardness assumptions that are believed to remain secure even against quantum adversaries. In the public-key setting, one important such foundation is the Module Learning-With-Errors problem (MLWE), which underlies lattice-based key encapsulation mechanisms that can replace classical Diffie-Hellman-style key establishment \cite{ref15}. 
+
+\subsubsection{Harvest Now, Decrypt Later}
+A natural question is why post-quantum protocols must be deployed already today, given that no sufficiently powerful quantum computer is yet known to exist. The main reason is the threat of “harvest now, decrypt later” attacks, in which encrypted communication is collected in the present and stored for future decryption once quantum capabilities become available \cite{ref16}. This is particularly relevant for widely deployed secure messaging systems, where communications may remain sensitive long after they are sent. The Signal Protocol is used not only by the Signal application but also by other major messaging services such as WhatsApp, and Signal describes it as protecting private communications exchanged daily by billions of people around the world [11]. Signal motivates the introduction of post-quantum mechanisms in its protocol stack as a response to this threat \cite{ref07}, arguing for an early migration toward hybrid (classical and quantum) secure designs.  
+
+\subsubsection{ML-KEM}
+ML-KEM, originally developed as Kyber, is the NIST-standardized post-quantum key encapsulation mechanism relevant to this thesis. A key encapsulation mechanism (KEM) is a set of algorithms that can be used by two parties to establish a shared secret over a public channel, after which that secret can be used with symmetric cryptographic algorithms for tasks such as encryption and authentication [15]. The security of ML-KEM is related to the computational difficulty of the MLWE problem, and it is currently believed to remain secure even against adversaries with quantum capabilities \cite{ref15}. 
+
+In the Signal protocol stack, ML-KEM serves as the post-quantum primitive underlying both the initial key establishment protocol PQXDH [18] and the post-quantum ratcheting mechanism SPQR [17]. These higher-level protocols, and how they are combined with existing classical security protocols, are discussed in the extended background. 
+
+\section{Problem Statement}
+
+Cryptographic algorithms are often compared with respect to their security properties; this is reasonable since cryptographic safety is the end goal of cryptographic algorithms. However, the performance and memory footprint or algorithm can have consequences on adoption. The ubiquity of Elliptic Curve Cryptography today can be attested to its much smaller key-size and higher performance when compared to Diffie-Hellman (p. 615, \cite{ref08}). If post-quantum algorithms are to be adopted, solutions that also take practical performance into account need to be used. This is especially relevant for Signal, since it is already widely used by millions, including members of governments. The Signal protocol and open-source libraries are also used by other actors as a back end to their messaging platform, a notable instance of this case being WhatsApp. The Signal foundation has released an update to the Signal protocol, adding a mechanism known as Sparse Post Quantum Ratchet to ensure Post Quantum security. If this update has a measurable performance penalty, users and developers may opt to use the less secure version of the Signal protocol. 
+
+\section{Aim and Research Question}
+
+The aim of this thesis is to evaluate and compare the performance of Double Ratchet and SPQR. 
+
+The research question is: 
+
+\begin{quote}
+Is there a substantial difference in performance between double-ratchet and sparse post quantum ratchet?
+\end{quote}
+
+\section{Delimitations}
+
+The study is delimited to the open-source Rust implementations of the relevant Signal protocol components, specifically libsignal v0.73.3, libsignal v0.92.1, and the standalone SparsePostQuantumRatchet repository. The comparison is limited to performance by execution-time. Security proofs, formal verification, cryptographic soundness, and resistance against concrete attacks are not evaluated. Furthermore, the study does not evaluate memory usage, bandwidth overhead, battery consumption, or network latency.  
+
+ 
+
+The study is further limited to selected benchmark cases representing 2-party communication. Group communication and sender-key/group ratchet mechanisms are excluded. Only the benchmark code and protocol paths exposed by the selected implementations are evaluated. The measurements are collected on one hardware/software environment, a Dell Latitude 5530. The results therefore indicate comparative performance under this environment and are not intended as universal performance guarantees across all devices or operating systems.  Finally, the study does not evaluate the full Signal application or user-perceived performance. It is limited to benchmarking selected protocol/library components in isolation. 
+
+\section{Thesis Outline}
+
+This thesis is structured as follows. The Extended Background chapter explains the ratcheting protocols in Signal. The Methodology chapter describes how benchmark tests are run on the ratcheting protocols. The Results chapter presents execution times for the selected benchmarks. The Discussion chapter interprets the findings and concludes the thesis.

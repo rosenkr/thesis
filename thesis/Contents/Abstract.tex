@@ -1,0 +1,10 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Secure messaging protocols are increasingly expected to provide security guarantees in a post-quantum world. Signal has addressed this challenge by introducing post-quantum cryptographic mechanisms into its protocol stack. In this context, the classical Double Ratchet protocol can be compared with the Sparse Post-Quantum Ratchet (SPQR), a post-quantum ratcheting mechanism. Since secure messaging is used at large scale, it is important to understand not only the security motivation for such protocols, but also their performance implications. 
+
+This thesis aims to evaluate and compare the performance of the classical Double Ratchet and SPQR as used in the Signal protocol. This is done by conducting a benchmark-based comparison of selected Rust implementations from Signal’s open-source protocol libraries. The results suggest that the inclusion of SPQR leads to lower performance than double ratchet alone. However, the findings are limited to the selected benchmarks and do not provide a sufficient basis for strong general conclusions. 
+
+\bigskip
+
+\noindent\textbf{Keywords:} Post-quantum cryptography, secure messaging, Signal, Double Ratchet, SPQR, benchmarking

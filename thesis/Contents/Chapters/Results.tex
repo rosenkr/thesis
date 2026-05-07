@@ -1,0 +1,157 @@
+
+\chapter{Results}
+
+Before presenting the benchmark results, it is important to note that measurements from the Latitude 5530 were excluded from the final analysis. These runs showed substantially weaker regression fit, with R$^2$ values around 0.5 across the measured benchmarks, indicating a noisy and less reliable measurement environment. In contrast, the Latitude 5430 produced consistently high regression fit, generally around 0.95 or above. Therefore, only the Latitude 5430 results are used in this chapter, since they provide a more reliable basis for comparing the Double Ratchet implementation in v0.73.3 with the Triple Ratchet implementation in v0.92.1.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{llllllll}
+\toprule
+\makecell{Benchmark} &
+\makecell{Samples\\(100)} &
+\makecell{Measured\\total} &
+\makecell{R$^2$} &
+\makecell{Time} &
+\makecell{Sends/recvs} &
+\makecell{DH\\ratchet} &
+\makecell{Braid\\ratchet} \\
+\midrule
+
+encrypt &
+1,509,950 iterations &
+4.99 s &
+0.97 &
+[3.28 $\mu$s \textbf{3.30 $\mu$s} 3.31 $\mu$s] &
+2558525 / 0 &
+0 &
+-- \\
+
+decrypt &
+1,111,000 iterations &
+5.00 s &
+0.98 &
+[4.48 $\mu$s \textbf{4.50 $\mu$s} 4.51 $\mu$s] &
+0 / 2159575 &
+0 &
+-- \\
+
+encrypt+decrypt &
+717,100 iterations &
+4.93 s &
+0.95 &
+[6.84 $\mu$s \textbf{6.87 $\mu$s} 6.90 $\mu$s] &
+1241387 / 1241387 &
+1 &
+-- \\
+
+ping pong &
+25,250 iterations &
+5.35 s &
+0.98 &
+[211.16 $\mu$s \textbf{211.72 $\mu$s} 212.29 $\mu$s] &
+83266 / 83266 &
+83266 &
+-- \\
+
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\caption{Benchmark results for v0.73.3.}
+\label{tab:benchmark-v0733}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{llllllll}
+\toprule
+\makecell{Benchmark} &
+\makecell{Samples\\(100)} &
+\makecell{Measured\\total} &
+\makecell{R$^2$} &
+\makecell{Time} &
+\makecell{Sends/recvs} &
+\makecell{DH\\ratchet} &
+\makecell{Braid\\ratchet} \\
+\midrule
+
+encrypt &
+469,650 iterations &
+4.73 s &
+0.98 &
+[10.02 $\mu$s \textbf{10.05 $\mu$s} 10.08 $\mu$s] &
+993937 / 0 &
+0 &
+0 \\
+
+decrypt &
+575,700 iterations &
+4.94 s &
+0.89 &
+[8.44 $\mu$s \textbf{8.50 $\mu$s} 8.56 $\mu$s] &
+0 / 1099987 &
+0 &
+0 \\
+
+encrypt+decrypt &
+318,150 iterations &
+4.86 s &
+0.95 &
+[15.12 $\mu$s \textbf{15.18 $\mu$s} 15.25 $\mu$s] &
+580293 / 580293 &
+0 &
+0 \\
+
+ping pong &
+20,200 iterations &
+5.42 s &
+0.99 &
+[267.24 $\mu$s \textbf{267.63 $\mu$s} 268.08 $\mu$s] &
+73166 / 73166 &
+73165 &
+1682 \\
+
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\caption{Benchmark results for v0.92.1.}
+\label{tab:benchmark-v0921}
+\end{table}
+
+Tables~\ref{tab:benchmark-v0733} and~\ref{tab:benchmark-v0921} show that the public-key ratchets are not exercised in the one-directional encrypt, decrypt, and encrypt+decrypt benchmarks. In these cases, the DH ratchet count is zero, except for a single DH ratchet in the v0.73.3 encrypt+decrypt benchmark, and the Braid ratchet count in v0.92.1 is also zero. This means that these benchmarks mainly measure the cost of message encryption and decryption on an already established chain, rather than the cost of public-key ratcheting.
+
+The comparison uses the median estimate reported by Criterion, highlighted in bold in the tables. For encryption on an existing chain, the median time increases from 3.30~$\mu$s in v0.73.3 to 10.05~$\mu$s in v0.92.1, making v0.92.1 approximately 3.0 times slower. For decryption, the median time increases from 4.50~$\mu$s to 8.50~$\mu$s, corresponding to approximately 1.9 times slower performance. For the one-way encrypt+decrypt benchmark, the median time increases from 6.87~$\mu$s to 15.18~$\mu$s, or approximately 2.2 times slower. These results indicate that the Triple Ratchet implementation introduces a clear per-message overhead even when no public-key ratchet is triggered. A likely explanation is that v0.92.1 performs additional symmetric-ratchet work compared with v0.73.3, although this benchmark does not isolate that cost directly.
+
+The ping-pong benchmark is the only benchmark where the public-key ratchets are exercised regularly. In this back-and-forth communication pattern, the DH ratchet count is approximately half of the total number of send and receive operations, which matches the expected behaviour of alternating communication. For v0.73.3, the benchmark records 83,266 sends and 83,266 receives, with 83,266 DH ratchet operations. For v0.92.1, the benchmark records 73,166 sends and 73,166 receives, with 73,165 DH ratchet operations and 1,682 Braid ratchet operations. The Braid ratchet is therefore triggered much less frequently than the DH ratchet, which is consistent with its sparse design. Despite this additional public-key mechanism, the median runtime increases from 211.72~$\mu$s to 267.63~$\mu$s, corresponding to an increase of approximately 26.4\%.
+\par\vspace{\baselineskip}
+The ping-pong benchmark is the most relevant benchmark for answering the research question, because it is the only benchmark that exercises both the DH ratchet and the Braid ratchet. It also better represents a realistic interactive messaging scenario, where both participants alternately send and receive messages. Compared with the one-directional benchmarks, the relative slowdown is smaller, but the absolute overhead is larger: the median runtime increases by 55.91~$\mu$s per iteration, from 211.72~$\mu$s to 267.63~$\mu$s. This suggests that the additional post-quantum ratcheting mechanism adds measurable overhead, but that this overhead is moderate in the communication pattern where all ratchets are active.
+
+The measured execution-time difference in the ping-pong benchmark is 55.91~$\mu$s. This is close to the standalone SPQR send/receive cost shown in Table~\ref{tab:standalone-spqr}, where one \texttt{send\_recv} operation is reported as 26.98~$\mu$s per iteration. Since the ping-pong benchmark includes both sending and receiving, two such operations would correspond to approximately 53.96~$\mu$s. This is close to the observed 55.91~$\mu$s difference, suggesting that the additional SPQR send/receive path accounts for much of the observed overhead. However, this should be interpreted as supporting evidence rather than a direct proof, since the benchmark does not isolate SPQR from all other implementation differences between the two versions.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{ll}
+\toprule
+\makecell{Benchmark} &
+\makecell{Reported value} \\
+\midrule
+
+\texttt{tests::send\_recv} &
+26.98 $\mu$s/iter (+/- 2.11) \\
+
+\bottomrule
+\end{tabular}
+\caption{Standalone SPQR benchmark result from \texttt{benches/spqr.rs}.}
+\label{tab:standalone-spqr}
+\end{table}
+
+Overall, the results show that the Triple Ratchet implementation introduces a measurable performance cost compared with the Double Ratchet implementation. In the one-directional benchmarks, v0.92.1 is approximately 1.9--3.0 times slower than v0.73.3, even though the public-key ratchets are mostly not exercised. In the more realistic ping-pong benchmark, where both the DH ratchet and the Braid ratchet are active, the relative slowdown is smaller, at approximately 26.4\%, although the absolute overhead is larger at 55.91~$\mu$s per iteration.
+
+

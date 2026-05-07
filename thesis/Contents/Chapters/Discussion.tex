@@ -1,0 +1,115 @@
+\chapter{Discussion}
+% 7 Discussion 
+%     Reflect on the research carried out and its contributions  
+%     Identify limitations in the study  
+%     Outline the practical and theoretical significance of the contributions and discuss ethical and societal aspects of the use of the artefact  
+%     Suggest areas for future research  
+%
+%     6 Evaluation and Comparison 
+%     Discuss in which situations one artefact is to be preferred over another 
+% 
+
+%U9 Conclusions and Discussion
+% Bachelor: 0/1/2, Master’s (1 Year): 0/1/2/3, Master’s (2 Years): 0/1/2/3
+% For 1 point, the research question should be clearly answered, limitations in the study design and their impact on the conclusions should be discussed, as well as how the results relate to previous studies, possible future studies based on the current study should be discussed, ethical and societal implications of the study’s conclusions should be discussed, and the use of IT tools (including AI tools) for the thesis work should be described and discussed.
+% For 2 points, the study’s limitations should be discussed in depth, and a detailed discussion of possible and relevant future studies should be provided.
+% For 3 points, an in-depth discussion of the study’s originality and relation to previous studies is also required.
+%
+% The discussion should be closely tied to the research question and the scientific grounding.
+% Based on the results, a clear answer to the research question should be provided.
+% This should be formulated and placed so that it is easy for the reader to find the answer.
+% Limitations should be discussed in terms of reproducibility, validity, reliability, generalizability, transferability, credibility, etc., depending on the method choice and method application.
+% For some theses, there may be hardly any ethical or societal implications.
+% In such cases, the discussion can be brief, but it should explain why the authors believe there are no major ethical or societal implications.
+
+%\subsection{Evaluation and Comparison}
+%Discuss in which situations one artefact is to be preferred over another 
+
+
+\subsection{Reflection} % (title of this subsection?)
+%Reflect on the research carried out and its contributions  
+% relation to previous studies 
+% the use of IT tools (including AI tools) for the thesis work should be described and discussed.
+The performance of SPQR compared to Double-Ratchet in the libsignal rust library was measured.
+Performance was measured using benchmarks written by the libsignal authors, with some additional code added to count the amount of times ratcheting occurs.
+Python and bash scripts were written to download code, run benchmarks and collect results in order to provide a reproducable testing environment.
+Further reproducability was achieved by providing a docker container.
+Code was written with the assistance of an LLM, all code written by an LLM was audited.
+Github and git was used to provide and manage a repository for the benchmarking code.
+
+\subsection{Conclusion}
+\subsubsection{Comparison of artefacts}
+%Discuss in which situations one artefact is to be preferred over another 
+The performance differed most when it came to more symmetric patterns of communication, both encryption and decryption saw their execution time double.
+This can be explained by comparing Diffie-Hellman and SPQR in the symmetric case.
+Since no Diffie-Hellman or SPQR ratcheting occurs when messages are only sent in one way,
+the algorithm becomes looking up and ratcheting the most recent shared KDF-chain to obtain a shared symmetric key.
+Triple Ratchet maintains two KDF-chains, one for SPQR and one for DH.
+On the other hand conventional Double Ratchet only maintains one KDF-chain.
+It is therefore natural that decryption and encryption in Triple Ratchet would be roughly twice as heavy compared to Double Ratchet.
+It can therefore be argued that if a user wants send many messages from one sender to one reciever,
+introducing SPQR would effect performance.
+However, encryption/decryption is already very performant.
+
+The intended use-case for Double/Triple ratchet is two-way cryptography, which is represented by the ping pong benchmark.
+This benchmark alternates the encryptor/decryptor and therefore causes DH and SPQR ratcheting to occur.
+Due to the sparse nature of SPQR, much fewer SPQR ratchet were completed compared to DH ratchets.
+Despite this, the ping pong benchmark saw a performance penalty of on average $55.91 \mu s$, which is roughly $26.4\%$.
+The added execution time is in line with the SCKA send/recv benchmark, the performance penalty can therefore be attributed to SPQR.
+In systems that send messages automatically, this performance increase could be significant.
+It would however not be noticeable for human communication.
+
+The performance penalty would likely also not be significant in programs that are already bottle-necked by other components,
+such as programs that communicate over the internet.
+
+\subsubsection{Research question}
+The answer to the research question:
+\begin{quote}
+Is there a significant difference in performance between double-ratchet and sparse post quantum ratchet?
+\end{quote}
+Would be:
+\begin{quote}
+    There is a signifcant difference in performance.
+    The performance penalty is however not significant in personal communcation, or in programs that are already bottle-necked by other components.
+\end{quote}
+
+
+\subsection{Limitations}
+%Identify limitations in the study  
+
+% hardware
+The implementations of Double-Ratchet and SPQR was tested on commercial computer hardware.
+This is the hardware that was most accesible to us when the study was conducted.
+In practice these libraries are executed on phones, with vastly different hardware.
+This leads to a reduction in generalizability and validity,
+had the study been conducted on phone hardware it would have been more generalizable to the actual practical use case of Signal.
+
+
+% scope
+Measuring execution time was the focus of this study, but execution time is not the only performance criteria that matters.
+For example, one of the reasons SCKA was used in SPQR rather than CKA was to save on bandwidth \cite{ref24}.
+Another important performance criteria is power consumption, especially since libsignal is meant to be executed on phones with strict battery life requirements.
+It could however be argued that execution time is correlated with power consumption as other studies have shown \cite{ref27},
+it still can not be ruled out that battery performance would be adversly affected.
+This affects the significance of the study.
+
+\subsection{Significance}
+%Outline the practical and theoretical significance of the contributions and discuss ethical and societal aspects of the use of the artefact  
+The study has shown that the performance difference between Double Ratchet and SPQR is significant in theory, it is however not significant in the practical case of human communication. 
+This means that integrating SPQR is a good option for messaging providers that already implement Double Ratchet and want a quantum resilient solution.
+Individuals already using software relient on Double Ratchet will not have to worry about upgrading their hardware to accomodate SPQR.
+
+\subsubsection{Ethical implications}
+The ethical implications of this study concerns honesty, transparency, reproducibility, and executing a fair comparison of the protocols.
+Open-source implementations and benchmarks of the protocols provided by Signal was used, to avoid plagirazation this was acknowledged when relevant.
+Privacy and consent was not an ethical concern since no human participants were involved.
+To ensure that the data was not misinterpreted and to ensure transparancy, the limitations of the study were discussed.
+While there may be ethical and societal implications of the Signal protocol and library, since nothing was implemented for deployement this was not a concern.
+
+\subsection{Future research}
+%Suggest areas for future research
+
+% test signal app in practice on phone hardware
+As mentioned previously, performance was not mentioned on phone hardware and only execution time was measured.
+Further research should measure performance on phone hardware,
+as well as other important performance criteras such as power consumption, bandwidth, memory footprint, etc.
